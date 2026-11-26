@@ -129,3 +129,36 @@
 ---
 
 *Última actualización: 2026-11-26 — Baseline MVP completado (Spec 01)*
+---
+
+## 🐳 Estado Docker / WSL (Sesión Actual)
+
+> **Contexto**: Docker instalado en WSL2, usuario añadido al grupo `docker`, pero **requiere nueva sesión** para aplicar cambios de grupo.
+
+### Próximo paso inmediato al reabrir terminal:
+```bash
+# 1. Verificar Docker funcionando
+docker run --rm hello-world
+
+# 2. Si OK, levantar infra
+make up
+
+# 3. Poblar BD
+make seed
+
+# 4. Iniciar API dev
+make dev
+```
+
+### Comandos alternativos si persisten problemas de permisos:
+```bash
+# Temporal (solo sesión actual)
+sudo chmod 666 /var/run/docker.sock
+
+# O usar sudo directamente
+sudo docker compose -f docker/docker-compose.yml up -d
+```
+
+---
+
+*Última actualización: 2026-11-26 — Baseline MVP completado (Spec 01) | Docker WSL pendiente reinicio sesión*
