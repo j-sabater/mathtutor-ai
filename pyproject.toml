@@ -1,0 +1,132 @@
+[project]
+name = "mathtutor-ai"
+version = "0.1.0"
+description = "Sistema agéntico de tutoría matemática para Bachillerato/EvAU (Matemáticas II: Cálculo)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.6.0",
+    "neo4j>=5.26.0",
+    "sympy>=1.13.0",
+    "latex2sympy2>=1.7.0",
+    "returns>=0.25.0",
+    "structlog>=25.1.0",
+    "python-json-logger>=3.3.0",
+    "httpx>=0.28.0",
+    "python-multipart>=0.0.12",
+    "jinja2>=3.1.0",
+    "typer>=0.15.0",
+    "python-dotenv>=1.0.0",
+]
+optional-dependencies = {
+    "dev" = [
+        "pytest>=8.3.0",
+        "pytest-asyncio>=0.24.0",
+        "pytest-cov>=6.0.0",
+        "pytest-mock>=3.14.0",
+        "ruff>=0.8.0",
+        "mypy>=1.13.0",
+        "types-requests>=2.32.0",
+        "pre-commit>=3.8.0",
+        "testcontainers>=4.10.0",
+        "neo4j-testcontainers>=1.0.0",
+    ],
+    "anthropic" = ["anthropic>=0.49.0"],
+    "openai" = ["openai>=1.58.0"],
+    "ollama" = ["ollama>=0.4.0"],
+    "ocr-local" = ["pix2text>=1.1.0"],
+    "ocr-api" = ["mathpix>=1.0.0"],
+    "langgraph" = ["langgraph>=0.2.0", "langchain-core>=0.3.0"],
+}
+
+[build-system]
+requires = ["setuptools>=75.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+select = ["E", "F", "W", "I", "UP", "B", "C4", "PTH", "T20", "PERF", "SIM", "RET"]
+ignore = ["S101", "PTH123"]
+fixable = ["E", "F", "W", "I", "UP", "B", "C4"]
+unfixable = ["S101", "PTH123"]
+exclude = [".venv", "dist", "build", "*.egg-info", ".git", "__pycache__", ".mypy_cache", ".pytest_cache"]
+src = ["src"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+
+[tool.ruff.lint.isort]
+known-first-party = ["mathtutor"]
+import-headings = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOlder"]
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_any_generics = true
+disallow_any_unimported = true
+no_implicit_optional = true
+no_implicit_reexport = true
+check_untyped_defs = true
+show_error_codes = true
+pretty = true
+namespace_packages = true
+explicit_package_bases = true
+enable_error_code = ["ignore-without-action"]
+
+[[tool.mypy.overrides]]
+module = "sympy.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "neo4j.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "latex2sympy2.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "returns.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-xvs --strict-markers --strict-config"
+markers = [
+    "unit: Unit tests",
+    "contract: Contract tests",
+    "integration: Integration tests (requires Neo4j)",
+    "e2e: End-to-end tests",
+    "slow: Slow tests",
+]
+
+[tool.coverage.run]
+source = ["src/mathtutor"]
+omit = ["*/tests/*", "*/conftest.py", "*/migrations/*"]
+
+[tool.coverage.report]
+fail_under = 90
+precision = 2
+show_missing = true
+
+[project.scripts]
+mathtutor = "mathtutor.cli.commands:app"
+mathtutor-api = "mathtutor.api.main:run"
+mathtutor-seed = "scripts.seed_graph:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["mathtutor*"]
