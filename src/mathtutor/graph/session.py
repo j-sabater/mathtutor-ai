@@ -1,12 +1,12 @@
-"""Gestión de sesión y driver Neo4j."""
+"""Gestión de sesión y driver Neo4j (Neo4j 6.x async API)."""
 
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Any
+from typing import AsyncGenerator, Any, Callable, TypeVar
 from dataclasses import dataclass
 
-from neo4j import AsyncDriver, AsyncSession, AsyncTransaction, GraphDatabase
+from neo4j import AsyncDriver, AsyncSession, AsyncTransaction, AsyncGraphDatabase
 from neo4j.exceptions import Neo4jError
 
 from mathtutor.core.config import settings
@@ -14,6 +14,8 @@ from mathtutor.core.exceptions import GraphTransactionError
 from mathtutor.core.logging import get_logger
 
 logger = get_logger(__name__)
+
+T = TypeVar("T")
 
 
 @dataclass
@@ -40,14 +42,14 @@ class Neo4jSessionManager:
         if self._driver is not None:
             return
 
-        self._driver = GraphDatabase.driver(
+        self._driver = AsyncGraphDatabase.driver(
             self._config.uri,
             auth=(self._config.user, self._config.password),
             database=self._config.database,
             max_connection_pool_size=self._config.max_connection_pool_size,
             connection_timeout=self._config.connection_timeout,
         )
-        # Verify connectivity
+        # Verify connectivity (async in neo4j 6.x)
         await self._driver.verify_connectivity()
         logger.info("neo4j_driver_initialized", uri=self._config.uri, database=self._config.database)
 
@@ -64,53 +66,22 @@ class Neo4jSessionManager:
             raise RuntimeError("Neo4j driver not initialized. Call initialize() first.")
         return self._driver
 
-    @asynccontextmanager
-    async def session(self, **kwargs: Any) -> AsyncGenerator[AsyncSession, None]:
-        """Context manager para sesión simple (auto-commit)."""
-        if self._driver is None:
-            await self.initialize()
-
-        async with self._driver.session(**kwargs) as session:
-            try:
-                yield session
-            except Neo4jError as e:
-                logger.error("neo4j_session_error", error=str(e))
-                raise GraphTransactionError(
-                    code="SESSION_ERROR",
-                    message=f"Error en sesión Neo4j: {e}",
-                    context={"operation": "session"},
-                ) from e
-
-    @asynccontextmanager
-    async def transaction(self, **kwargs: Any) -> AsyncGenerator[AsyncTransaction, None]:
-        """Context manager para transacción explícita con retry automático."""
-        if self._driver is None:
-            await self.initialize()
-
-        async with self._driver.session(**kwargs) as session:
-            async with session.begin_transaction() as tx:
-                try:
-                    yield tx
-                    await tx.commit()
-                except Neo4jError as e:
-                    await tx.rollback()
-                    logger.error("neo4j_transaction_error", error=str(e))
-                    raise GraphTransactionError(
-                        code="TRANSACTION_ERROR",
-                        message=f"Error en transacción Neo4j: {e}",
-                        context={"operation": "transaction"},
-                    ) from e
-
     async def execute_query(
         self,
         query: str,
         parameters: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
-        """Ejecuta query de lectura simple y retorna lista de records como dicts."""
-        async with self.session(**kwargs) as session:
+        """Ejecuta query de lectura simple (auto-commit) y retorna lista de records como dicts."""
+        if self._driver is None:
+            await self.initialize()
+
+        session = self._driver.session(**kwargs)
+        try:
             result = await session.run(query, parameters or {})
-            return [record.data() for record in result]
+            return await result.data()
+        finally:
+            await session.close()
 
     async def execute_write(
         self,
@@ -118,10 +89,67 @@ class Neo4jSessionManager:
         parameters: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
-        """Ejecuta query de escritura en transacción y retorna resultado."""
-        async with self.transaction(**kwargs) as tx:
-            result = await tx.run(query, parameters or {})
-            return [record.data() for record in result]
+        """Ejecuta query de escritura en transacción explícita y retorna resultado."""
+        if self._driver is None:
+            await self.initialize()
+
+        session = self._driver.session(**kwargs)
+        try:
+            tx = await session.begin_transaction()
+            try:
+                result = await tx.run(query, parameters or {})
+                records = await result.data()
+                await tx.commit()
+                return records
+            except Exception:
+                await tx.rollback()
+                raise
+        finally:
+            await session.close()
+
+    async def execute_write_tx(
+        self,
+        work: Callable[[AsyncTransaction], Any],
+        **kwargs: Any,
+    ) -> Any:
+        """Ejecuta trabajo personalizado en transacción de escritura explícita."""
+        if self._driver is None:
+            await self.initialize()
+
+        session = self._driver.session(**kwargs)
+        try:
+            tx = await session.begin_transaction()
+            try:
+                result = await work(tx)
+                await tx.commit()
+                return result
+            except Exception:
+                await tx.rollback()
+                raise
+        finally:
+            await session.close()
+
+    async def execute_read_tx(
+        self,
+        work: Callable[[AsyncTransaction], Any],
+        **kwargs: Any,
+    ) -> Any:
+        """Ejecuta trabajo personalizado en transacción de lectura explícita."""
+        if self._driver is None:
+            await self.initialize()
+
+        session = self._driver.session(**kwargs)
+        try:
+            tx = await session.begin_transaction()
+            try:
+                result = await work(tx)
+                await tx.commit()
+                return result
+            except Exception:
+                await tx.rollback()
+                raise
+        finally:
+            await session.close()
 
 
 # Module-level singleton instance
@@ -154,12 +182,28 @@ async def close_neo4j() -> None:
 async def get_neo4j_session() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency para inyectar sesión Neo4j."""
     manager = get_session_manager()
-    async with manager.session() as session:
+    if manager._driver is None:
+        await manager.initialize()
+    session = manager._driver.session()
+    try:
         yield session
+    finally:
+        await session.close()
 
 
 async def get_neo4j_transaction() -> AsyncGenerator[AsyncTransaction, None]:
     """FastAPI dependency para inyectar transacción Neo4j."""
     manager = get_session_manager()
-    async with manager.transaction() as tx:
-        yield tx
+    if manager._driver is None:
+        await manager.initialize()
+    session = manager._driver.session()
+    try:
+        tx = await session.begin_transaction()
+        try:
+            yield tx
+            await tx.commit()
+        except Exception:
+            await tx.rollback()
+            raise
+    finally:
+        await session.close()

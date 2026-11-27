@@ -9,7 +9,7 @@ from pydantic import HttpUrl
 from mathtutor.api.schemas.v1.ingest import IngestRequest, IngestResponse
 from mathtutor.api.dependencies import get_ocr_pipeline
 from mathtutor.ingestion.pipeline import OCRPipeline
-from mathtutor.graph.session import get_db_transaction
+from mathtutor.graph.session import get_neo4j_transaction
 from mathtutor.graph.repositories import IntentoRepository
 from mathtutor.domain.entities import EstadoIntento
 from mathtutor.core.logging import get_logger
@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api", tags=["ingest"])
 async def ingest_intento(
     request: IngestRequest,
     ocr_pipeline: OCRPipeline = Depends(get_ocr_pipeline),
-    tx = Depends(get_db_transaction),
+    tx = Depends(get_neo4j_transaction),
 ) -> IngestResponse:
     """
     Procesa imágenes/PDF subidas por la alumna:

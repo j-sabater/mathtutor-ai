@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Protocol, Literal
-from pydantic import BaseModel, ConfigDict, Field, Annotated
+from typing import Protocol, Literal, Annotated
+from pydantic import BaseModel, ConfigDict, Field
 from returns.result import Result
 import sympy as sp
 

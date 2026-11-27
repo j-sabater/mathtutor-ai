@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 import sympy as sp
-import latex2sympy2 as l2s
 from returns.result import Result, Success, Failure
+import latex2sympy2 as l2s
 
 from mathtutor.agent.tools.protocols import (
     SymPyToolProtocol,
@@ -22,7 +22,6 @@ class Latex2SymPyTool(SymPyToolProtocol):
 
     def __init__(self, timeout_seconds: float = 10.0):
         self.timeout = timeout_seconds
-        self._parser = l2s.Latex2Sympy()
 
     def _to_sympy(self, serialized: str) -> sp.Expr:
         """Deserializa expresión SymPy desde srepr."""
@@ -68,7 +67,7 @@ class Latex2SymPyTool(SymPyToolProtocol):
     async def parse_latex(self, req: ParseLatexRequest) -> Result[ParseLatexResponse, SymPyError]:
         try:
             latex_clean = self._preprocess_latex(req.latex)
-            expr = self._parser.latex2sympy(latex_clean)
+            expr = l2s.latex2sympy(latex_clean)
 
             # Aplicar símbolos predefinidos
             for name, sym_str in req.variables.items():

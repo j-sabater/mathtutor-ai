@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol, Callable
 from pydantic import BaseModel, ConfigDict, Field
-from returns.result import Result
+from returns.result import Result, Success, Failure
 import sympy as sp
 
 from mathtutor.domain.value_objects import StepValidation, ErrorClassification
@@ -61,7 +61,7 @@ class DefaultErrorClassifierEngine:
 
     def classify(self, validation: StepValidation, expected_expr: sp.Expr) -> Result[ErrorClassification, ClassificationError]:
         if validation.es_correcto:
-            return Result.Failure(ClassificationError(
+            return Failure(ClassificationError(
                 code="NOT_AN_ERROR",
                 message="No se puede clasificar un paso correcto como error"
             ))
@@ -70,19 +70,19 @@ class DefaultErrorClassifierEngine:
             for _, condition, patron_codigo in self._rules:
                 if condition(validation, expected_expr):
                     confianza = 0.95 if patron_codigo != "ERR-UNCATEGORIZED" else 0.5
-                    return Result.Success(ErrorClassification(
+                    return Success(ErrorClassification(
                         patron_codigo=patron_codigo,
                         paso=validation.paso_numero,
                         confianza=confianza,
                         es_nueva_instancia=False,  # Se resuelve en UpdateGraphNode
                     ))
             # Nunca llega aquí por fallback
-            return Result.Failure(ClassificationError(
+            return Failure(ClassificationError(
                 code="CLASSIFICATION_FAILED",
                 message="No se pudo clasificar el error"
             ))
         except Exception as e:
-            return Result.Failure(ClassificationError(
+            return Failure(ClassificationError(
                 code="CLASSIFICATION_EXCEPTION",
                 message=f"Error en motor de clasificación: {e}"
             ))

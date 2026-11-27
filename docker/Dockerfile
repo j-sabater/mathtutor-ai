@@ -9,13 +9,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY pyproject.toml .
-RUN pip install --no-cache-dir -e ".[dev,anthropic]"
-
-# Copy source code
+# Copy source code first (needed for setuptools find_packages)
 COPY src/ ./src/
 COPY specs/ ./specs/
+COPY scripts/ ./scripts/
+COPY pyproject.toml .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir ".[dev,anthropic,langgraph]"
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app

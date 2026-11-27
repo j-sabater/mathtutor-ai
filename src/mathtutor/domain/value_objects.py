@@ -23,7 +23,6 @@ class LatexString(str):
 
         return core_schema.with_info_plain_validator_function(
             cls._validate,
-            core_schema.str_schema(min_length=1),
             serialization=core_schema.to_string_ser_schema(),
         )
 
@@ -40,7 +39,7 @@ class LatexString(str):
 class PasoMatematico(BaseModel):
     """Paso individual en la resolución de un ejercicio."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, arbitrary_types_allowed=True)
 
     numero: Annotated[int, Field(ge=1)]
     latex: LatexString
