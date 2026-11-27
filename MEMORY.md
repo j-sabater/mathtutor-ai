@@ -162,3 +162,87 @@ sudo docker compose -f docker/docker-compose.yml up -d
 ---
 
 *Última actualización: 2026-11-26 — Baseline MVP completado (Spec 01) | Docker WSL pendiente reinicio sesión*
+
+---
+
+## 🐳 Estado Docker / WSL (Sesión Actual) - RESUELTO ✅
+
+> **Problemas resueltos**: 
+> - Neo4j 6.x async API (usar `AsyncGraphDatabase` no `GraphDatabase`)
+> - Pydantic v2 `with_info_plain_validator_function` signature change
+> - `latex2sympy2.latex2sympy` function vs `Latex2Sympy` class
+> - `returns.result` Success/Failure imports
+> - Session/Transaction close() await patterns
+
+### Próximo paso inmediato al reabrir terminal:
+```bash
+# 1. Verificar Docker funcionando
+docker run --rm hello-world
+
+# 2. Levantar infra
+make up
+
+# 3. Poblar BD (ya seed, pero por si acaso)
+make seed
+
+# 4. Iniciar API dev
+make dev
+```
+
+---
+
+## 📊 Estado Actual Verificado (2026-11-27)
+
+| Componente | Estado |
+|------------|--------|
+| **API Health** | ✅ `{"status":"ok","version":"0.1.0"}` |
+| **Swagger UI** | ✅ http://localhost:8000/docs |
+| **Neo4j** | ✅ Conectado, 16 conceptos, 18 prerrequisitos, 1 usuario |
+| **Seed Graph** | ✅ Completado sin warnings |
+| **CLI** | ✅ `check-db`, `seed`, `config`, `version`, `migrate` |
+| **SymPy Tool** | ✅ Parse, Diff, Equals funcionando |
+| **Error Classifier** | ✅ Chain rule, Sign error detectados |
+
+---
+
+## 🎯 Próximos Pasos (Spec 02 - Agent Architecture)
+
+1. **Implementar nodos LangGraph** según `specs/02-agent-architecture-and-workflows.md`:
+   - `IngestNode` - OCR + estructura LaTeX
+   - `ReviewOCRNode` - Human-in-the-loop (interrupt)
+   - `CorrectNode` - SymPy validation paso a paso
+   - `ClassifyErrorsNode` - ErrorClassifierEngine
+   - `UpdateGraphNode` - Saga pattern con compensación
+   - `GenerateRecommendationNode` - Generate-validate-retry loop
+
+2. **Configurar checkpointer** (SqliteSaver) + `interrupt_before=["review_ocr"]`
+
+3. **Prompt management** (`agent/prompts/versions/current/`)
+
+4. **Streaming WebSocket** (`StreamChunk`)
+
+---
+
+## 📝 Decisiones Técnicas Recientes
+
+| Decisión | Archivo | Razón |
+|----------|---------|-------|
+| `AsyncGraphDatabase.driver` en lugar de `GraphDatabase.driver` | `session.py` | Neo4j 6.x usa driver async nativo |
+| `await session.run()` y `await tx.run()` | `session.py` | Neo4j 6.x coroutines |
+| `await session.close()` y `await driver.close()` | `session.py` | Neo4j 6.x async close |
+| `latex2sympy2.latex2sympy()` function | `sympy_tool.py` | API cambió de clase a función |
+| `with_info_plain_validator_function(cls._validate, serialization=...)` | `value_objects.py` | Pydantic v2 keyword-only args |
+| `from returns.result import Success, Failure` | `error_classifier.py` | API correcta de returns |
+
+---
+
+## 🔄 Próximas Acciones (Prioridad)
+
+1. **Spec 02**: Implementar nodos LangGraph + workflows
+2. **Tests de integración**: `tests/integration/` con testcontainers
+3. **Evals**: Dataset EvAU mínimo + runners anti-alucinación
+4. **Prompt templates**: Jinja2 versionados en `agent/prompts/`
+
+---
+
+*Última actualización: 2026-11-27 — Spec 01 completo + Neo4j 6.x/Pydantic v2 fixes pushed to https://github.com/j-sabater/mathtutor-ai*
