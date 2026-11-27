@@ -17,6 +17,7 @@ _QUERY_FILES = {
     "mastery": "mastery.cypher",
     "patrones": "patrones.cypher",
     "recommendations": "recommendations.cypher",
+    "sesiones": "sesiones.cypher",
     "schema": "schema.cypher",
 }
 

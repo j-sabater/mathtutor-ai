@@ -7,6 +7,7 @@ from fastapi import Depends
 from returns.result import Failure
 
 from mathtutor.graph.session import get_neo4j_session, get_neo4j_transaction, AsyncSession, AsyncTransaction
+from mathtutor.graph.repositories_impl import create_repositories, Neo4jRepositories
 from mathtutor.llm.factory import LLMFactory
 from mathtutor.llm.protocol import LLMProtocol
 from mathtutor.ingestion.pipeline import OCRPipeline
@@ -85,3 +86,12 @@ async def get_error_classifier() -> ErrorClassifierEngine:
     """Dependency para motor de clasificación de errores."""
     from mathtutor.agent.tools.error_classifier import create_error_classifier
     return create_error_classifier()
+
+
+# ── Repository Dependencies ────────────────────────────────────────────
+
+async def get_repositories() -> Neo4jRepositories:
+    """Dependency para repositorios Neo4j con transacción."""
+    from mathtutor.graph.session import get_neo4j_transaction
+    async for tx in get_neo4j_transaction():
+        yield await create_repositories(tx)

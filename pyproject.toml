@@ -129,3 +129,6 @@ mathtutor-seed = "scripts.seed_graph:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["mathtutor*"]
+
+[tool.setuptools.package-data]
+mathtutor = ["graph/queries/*.cypher", "agent/prompts/versions/**/*.j2"]

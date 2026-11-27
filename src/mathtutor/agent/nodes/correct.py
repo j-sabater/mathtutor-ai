@@ -184,33 +184,132 @@ class CorrectNode(BaseNode):
     ) -> StepValidation:
         """Valida paso de cálculo (límite, derivada, integral) contra solución canónica."""
         
-        # Para MVP: validar equivalencia simbólica con solución esperada del paso correspondiente
-        # En implementación completa, se compararía con el paso equivalente de la solución canónica
+        # Obtener paso canónico correspondiente
+        pasos_canonicos = ejercicio.pasos_solucion or []
+        if not pasos_canonicos:
+            # Sin solución canónica: validar solo sintaxis
+            return StepValidation(
+                paso_numero=paso.numero,
+                latex_original=paso.latex,
+                latex_normalizado=paso.latex,
+                expresion_sympy=expr_serialized,
+                es_correcto=True,
+                tipo_error=None,
+                mensaje_feedback="Paso válido sintácticamente (sin solución de referencia)",
+                sugerencia_correccion=None
+            )
         
-        # Simplificar expresión del alumno
-        simplified = sp.simplify(expr)
-        simplified_serialized = sp.srepr(simplified)
+        # Índice del paso canónico (0-based)
+        canon_idx = paso.numero - 1
+        if canon_idx >= len(pasos_canonicos):
+            # Más pasos del alumno que en la solución canónica
+            return StepValidation(
+                paso_numero=paso.numero,
+                latex_original=paso.latex,
+                latex_normalizado=paso.latex,
+                expresion_sympy=expr_serialized,
+                es_correcto=False,
+                tipo_error="ERR-EXTRA-STEP",
+                mensaje_feedback=f"Paso extra no esperado (solución tiene {len(pasos_canonicos)} pasos)",
+                sugerencia_correccion="Revisa si este paso es necesario"
+            )
         
-        # Buscar solución canónica del paso correspondiente
-        # Por ahora: validación básica de que es expresión matemática válida
-        is_valid = True
-        tipo_error = None
-        feedback = "Paso válido"
-        sugerencia = None
+        # Parsear paso canónico
+        import latex2sympy2 as l2s
+        try:
+            canon_latex = pasos_canonicos[canon_idx]
+            canon_expr = l2s.latex2sympy(canon_latex)
+            canon_serialized = sp.srepr(canon_expr)
+        except Exception as e:
+            # Error parseando solución canónica
+            return StepValidation(
+                paso_numero=paso.numero,
+                latex_original=paso.latex,
+                latex_normalizado=paso.latex,
+                expresion_sympy=expr_serialized,
+                es_correcto=False,
+                tipo_error="ERR-CANONICAL-PARSE",
+                mensaje_feedback=f"Error en solución canónica: {e}",
+                sugerencia_correccion="Contactar al profesor"
+            )
         
-        # TODO: Implementar comparación con solución canónica paso a paso
-        # when ejercicio.solucion_canonica esté disponible
+        # Comparar expresión del alumno con paso canónico usando SymPy
+        simplified_student = sp.simplify(expr)
+        simplified_canon = sp.simplify(canon_expr)
         
-        return StepValidation(
-            paso_numero=paso.numero,
-            latex_original=paso.latex,
-            latex_normalizado=paso.latex,
-            expresion_sympy=expr_serialized,
-            es_correcto=is_valid,
-            tipo_error=tipo_error,
-            mensaje_feedback=feedback,
-            sugerencia_correccion=sugerencia
-        )
+        # Verificar equivalencia simbólica
+        diff = sp.simplify(simplified_student - simplified_canon)
+        are_equal = diff == 0
+        
+        if not are_equal:
+            # Verificación numérica como fallback
+            try:
+                vars_student = list(simplified_student.free_symbols)
+                vars_canon = list(simplified_canon.free_symbols)
+                all_vars = list(set(vars_student) | set(vars_canon))
+                
+                numeric_equal = True
+                for _ in range(10):
+                    subs = {}
+                    for v in all_vars:
+                        subs[v] = sp.Rational(sp.randint(-5, 5), sp.randint(1, 5))
+                    try:
+                        v1 = complex(simplified_student.subs(subs).evalf())
+                        v2 = complex(simplified_canon.subs(subs).evalf())
+                        if abs(v1 - v2) > 1e-10:
+                            numeric_equal = False
+                            break
+                    except Exception:
+                        numeric_equal = False
+                        break
+                
+                are_equal = numeric_equal
+            except Exception:
+                are_equal = False
+        
+        if are_equal:
+            return StepValidation(
+                paso_numero=paso.numero,
+                latex_original=paso.latex,
+                latex_normalizado=paso.latex,
+                expresion_sympy=expr_serialized,
+                es_correcto=True,
+                tipo_error=None,
+                mensaje_feedback="Paso correcto",
+                sugerencia_correccion=None
+            )
+        else:
+            # Determinar tipo de error basado en la diferencia
+            tipo_error = self._classify_step_error(simplified_student, simplified_canon, paso.latex, canon_latex)
+            return StepValidation(
+                paso_numero=paso.numero,
+                latex_original=paso.latex,
+                latex_normalizado=paso.latex,
+                expresion_sympy=expr_serialized,
+                es_correcto=False,
+                tipo_error=tipo_error,
+                mensaje_feedback=f"Paso incorrecto. Se esperaba: {canon_latex}",
+                sugerencia_correccion=f"Revisa el paso {paso.numero}. Resultado esperado: {canon_latex}"
+            )
+    
+    def _classify_step_error(self, student_expr: sp.Expr, canon_expr: sp.Expr, student_latex: str, canon_latex: str) -> str:
+        """Clasifica el tipo de error comparando expresión del alumno con canónica."""
+        diff = sp.simplify(student_expr - canon_expr)
+        
+        # Si la diferencia es solo un signo
+        if sp.simplify(student_expr + canon_expr) == 0:
+            return "ERR-SIGN-ERROR"
+        
+        # Si el alumno tiene términos extra (ej. constante de integración faltante)
+        if canon_expr.is_constant() and not student_expr.is_constant():
+            return "ERR-INT-CONSTANT"
+        
+        # Si hay división por cero o dominio
+        if student_expr.has(sp.zoo) or student_expr.has(sp.nan):
+            return "ERR-DOMAIN-VIOLATION"
+        
+        # Error genérico de simplificación/álgebra
+        return "ERR-ALGEBRA-SIMPLIFY"
     
     async def _validate_optimization(
         self,

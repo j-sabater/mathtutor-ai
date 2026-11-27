@@ -79,3 +79,7 @@ WHERE i.created_at >= datetime() - duration({days: $days})
 RETURN i
 ORDER BY i.created_at DESC
 LIMIT $limit
+
+-- name: delete
+MATCH (i:Intento {id: $intento_id})
+DETACH DELETE i

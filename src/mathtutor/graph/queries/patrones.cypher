@@ -63,3 +63,7 @@ RETURN p.codigo, p.nombre, p.severidad, count(*) AS frecuencia,
        collect(DISTINCT i.id) AS intentos_afectados
 ORDER BY frecuencia DESC, p.severidad DESC
 LIMIT $limit
+
+-- name: unlink_intento_error
+MATCH (i:Intento {id: $intento_id})-[he:HAS_ERROR]->(p:PatronDeError {codigo: $patron_codigo})
+DELETE he

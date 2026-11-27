@@ -131,6 +131,8 @@ class UpdateGraphNode(BaseNode):
             await self._graph.link_intento_error(
                 intento_id, ec.patron_codigo, ec.paso, ec.confianza
             )
+            # Registrar para compensación
+            self._executed_steps.append(("unlink_intento_error", (intento_id, ec.patron_codigo)))
             
             errores_persistidos.append(ec.model_copy(update={"es_nueva_instancia": es_nueva}))
         
@@ -181,8 +183,18 @@ class UpdateGraphNode(BaseNode):
             return []
         
         recomendaciones_result = await self._graph.generate_recommendations(state.alumna_id, limit=1)
-        if recomendaciones_result.is_success():
-            return [ej.id for ej in recomendaciones_result.unwrap()]
+        if isinstance(recomendaciones_result, Success):
+            ejercicios = recomendaciones_result.unwrap()
+            if ejercicios:
+                # Registrar para compensación (necesitamos el concepto origen)
+                # Para MVP, usamos el primer concepto testeado
+                ejercicio_result = await self._graph.get_ejercicio_with_conceptos(state.ejercicio_id)
+                if isinstance(ejercicio_result, Success):
+                    tests = ejercicio_result.unwrap().tests
+                    if tests:
+                        concepto_codigo = tests[0].concepto.codigo
+                        self._executed_steps.append(("unlink_recommendation", (concepto_codigo, ejercicios[0].id)))
+            return [ej.id for ej in ejercicios]
         return []
     
     def _infer_concepto_from_paso(self, paso: int, ejercicio_id: str) -> str | None:
@@ -212,7 +224,15 @@ class UpdateGraphNode(BaseNode):
         for action, param in reversed(self._executed_steps):
             try:
                 if action == "delete_intento" and self._graph:
-                    # En implementación completa: await self._graph.delete_intento(param)
-                    self._logger.warning("compensate_delete_intento", intento_id=param)
+                    await self._graph.delete_intento(param)
+                    self._logger.info("compensate_deleted_intento", intento_id=param)
+                elif action == "unlink_intento_error" and self._errors:
+                    # param = (intento_id, patron_codigo)
+                    await self._errors.unlink_intento_error(param[0], param[1])
+                    self._logger.info("compensate_unlinked_error", intento_id=param[0], patron_codigo=param[1])
+                elif action == "unlink_recommendation" and self._graph:
+                    # param = (concepto_codigo, ejercicio_id)
+                    await self._graph.unlink_recommendation(param[0], param[1])
+                    self._logger.info("compensate_unlinked_recommendation", concepto_codigo=param[0], ejercicio_id=param[1])
             except Exception as e:
                 self._logger.error("compensate_failed", action=action, param=param, error=str(e))

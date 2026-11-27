@@ -18,6 +18,11 @@ from mathtutor.agent.nodes import (
 )
 from mathtutor.agent.state import AgentState
 from mathtutor.core.config import settings
+from mathtutor.agent.tools.sympy_tool import Latex2SymPyTool
+from mathtutor.agent.tools.error_classifier import create_error_classifier
+from mathtutor.graph.repositories_impl import Neo4jRepositories
+from mathtutor.llm.protocol import LLMProtocol
+from mathtutor.ingestion.pipeline import OCRPipeline
 
 
 # Global checkpointer instance (created lazily on first graph build)
@@ -47,7 +52,16 @@ async def _get_async_checkpointer():
     return _checkpointer
 
 
-def build_main_graph() -> StateGraph:
+def build_main_graph(
+    *,
+    exercise_repo: Neo4jRepositories | None = None,
+    graph_repo: Neo4jRepositories | None = None,
+    error_repo: Neo4jRepositories | None = None,
+    llm: LLMProtocol | None = None,
+    sympy_tool: Latex2SymPyTool | None = None,
+    error_classifier = None,
+    ocr_pipeline: OCRPipeline | None = None,
+) -> StateGraph:
     """
     Construye el workflow principal de corrección:
     Ingest → ReviewOCR(interrupt) → Correct → ClassifyErrors → UpdateGraph → GenerateRecommendation
@@ -58,12 +72,28 @@ def build_main_graph() -> StateGraph:
     workflow = StateGraph(AgentState)
     
     # Nodos (instanciados con dependencias inyectadas)
-    workflow.add_node("ingest", IngestNode())
+    workflow.add_node("ingest", IngestNode(
+        ocr_pipeline=ocr_pipeline,
+        exercise_repo=exercise_repo,
+    ))
     workflow.add_node("review_ocr", ReviewOCRNode())
-    workflow.add_node("correct", CorrectNode())
-    workflow.add_node("classify_errors", ClassifyErrorsNode())
-    workflow.add_node("update_graph", UpdateGraphNode())
-    workflow.add_node("generate_recommendation", GenerateRecommendationNode())
+    workflow.add_node("correct", CorrectNode(
+        sympy_tool=sympy_tool,
+        exercise_repo=exercise_repo,
+    ))
+    workflow.add_node("classify_errors", ClassifyErrorsNode(
+        error_classifier=error_classifier or create_error_classifier(),
+        exercise_repo=exercise_repo,
+    ))
+    workflow.add_node("update_graph", UpdateGraphNode(
+        graph_repo=graph_repo,
+        error_repo=error_repo,
+    ))
+    workflow.add_node("generate_recommendation", GenerateRecommendationNode(
+        llm=llm,
+        sympy_tool=sympy_tool,
+        graph_repo=graph_repo,
+    ))
     
     # Edges - Flujo lineal
     workflow.set_entry_point("ingest")
@@ -76,6 +106,28 @@ def build_main_graph() -> StateGraph:
     
     # Nota: El checkpointer se inyecta en get_compiled_graph() que es async
     return workflow
+
+
+async def build_main_graph_with_deps(
+    repos: Neo4jRepositories,
+    llm: LLMProtocol | None = None,
+    ocr_pipeline: OCRPipeline | None = None,
+) -> StateGraph:
+    """
+    Construye el workflow principal con dependencias reales inyectadas.
+    """
+    sympy_tool = Latex2SymPyTool(timeout_seconds=settings.sympy_timeout_seconds)
+    error_classifier = create_error_classifier()
+    
+    return build_main_graph(
+        exercise_repo=repos,
+        graph_repo=repos,
+        error_repo=repos,
+        llm=llm,
+        sympy_tool=sympy_tool,
+        error_classifier=error_classifier,
+        ocr_pipeline=ocr_pipeline,
+    )
 
 
 # Instancia global compilada (lazy, async)
@@ -93,3 +145,17 @@ async def get_compiled_graph() -> StateGraph:
             interrupt_before=["review_ocr"]
         )
     return _compiled_graph
+
+
+async def get_compiled_graph_with_deps(
+    repos: Neo4jRepositories,
+    llm: LLMProtocol | None = None,
+    ocr_pipeline: OCRPipeline | None = None,
+) -> StateGraph:
+    """Obtiene grafo compilado con dependencias reales inyectadas."""
+    workflow = await build_main_graph_with_deps(repos, llm, ocr_pipeline)
+    checkpointer = await _get_async_checkpointer()
+    return workflow.compile(
+        checkpointer=checkpointer,
+        interrupt_before=["review_ocr"]
+    )
