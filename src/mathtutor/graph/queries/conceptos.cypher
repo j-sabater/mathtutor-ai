@@ -2,7 +2,7 @@
 -- CONCEPTOS: Queries CRUD y navegación
 -- ============================================================================
 
--- ── Create ─────────────────────────────────────────────────────────────
+-- name: create
 CREATE (c:Concepto {
     id: $id,
     codigo: $codigo,
@@ -17,25 +17,25 @@ CREATE (c:Concepto {
 })
 RETURN c
 
--- ── Read by ID ─────────────────────────────────────────────────────────
+-- name: read_by_id
 MATCH (c:Concepto {id: $id})
 RETURN c
 
--- ── Read by Código ─────────────────────────────────────────────────────
+-- name: read_by_codigo
 MATCH (c:Concepto {codigo: $codigo})
 RETURN c
 
--- ── Read All ───────────────────────────────────────────────────────────
+-- name: read_all
 MATCH (c:Concepto)
 RETURN c
 ORDER BY c.bloque, c.nivel, c.codigo
 
--- ── Read by Bloque ─────────────────────────────────────────────────────
+-- name: read_by_bloque
 MATCH (c:Concepto {bloque: $bloque})
 RETURN c
 ORDER BY c.nivel, c.codigo
 
--- ── Read with Prerequisitos (DAG navegación) ──────────────────────────
+-- name: read_with_prereqs
 MATCH (c:Concepto {codigo: $codigo})
 OPTIONAL MATCH (c)<-[:PREREQUISITE_OF*]-(pre:Concepto)
 OPTIONAL MATCH (c)-[:PREREQUISITE_OF*]->(dep:Concepto)
@@ -43,33 +43,32 @@ RETURN c,
        collect(DISTINCT pre) AS prerequisitos,
        collect(DISTINCT dep) AS dependientes
 
--- ── Update ─────────────────────────────────────────────────────────────
+-- name: update
 MATCH (c:Concepto {id: $id})
 SET c += $props,
     c.updated_at = datetime()
 RETURN c
 
--- ── Delete ─────────────────────────────────────────────────────────────
+-- name: delete
 MATCH (c:Concepto {codigo: $codigo})
 DETACH DELETE c
 
--- ── Add Prerequisite (hard/soft) ──────────────────────────────────────
+-- name: add_prerequisite
 MATCH (a:Concepto {codigo: $from_codigo}), (b:Concepto {codigo: $to_codigo})
 MERGE (a)-[r:PREREQUISITE_OF]->(b)
 SET r.tipo = $tipo, r.peso = $peso
 RETURN r
 
--- ── Remove Prerequisite ───────────────────────────────────────────────
+-- name: remove_prerequisite
 MATCH (a:Concepto {codigo: $from_codigo})-[r:PREREQUISITE_OF]->(b:Concepto {codigo: $to_codigo})
 DELETE r
 
--- ── Validate DAG (no cycles) ──────────────────────────────────────────
--- Returns true if adding edge would create cycle
+-- name: validate_dag
 MATCH (a:Concepto {codigo: $from_codigo}), (b:Concepto {codigo: $to_codigo})
 OPTIONAL MATCH path = (b)-[:PREREQUISITE_OF*]->(a)
 RETURN path IS NOT NULL AS would_create_cycle
 
--- ── Seed Data: Conceptos Matemáticas II ───────────────────────────────
+-- name: seed_conceptos
 UNWIND $conceptos AS row
 MERGE (c:Concepto {codigo: row.codigo})
 SET c += row,

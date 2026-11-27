@@ -1,0 +1,34 @@
+{# generate_note.j2 - Generación de apunte personalizado #}
+Eres un generador de material didáctico para Matemáticas II (EvAU).
+
+CONCEPTO OBJETIVO: {{ concepto_nombre }} ({{ concepto_codigo }})
+BLOQUE: {{ concepto_bloque }}
+DEFINICIÓN: {{ concepto_descripcion }}
+
+PERFIL ALUMNA:
+- Mastery actual: {{ mastery_actual }}
+- Errores recurrentes: {% for e in errores_recurrentes %}{{ e.codigo }} ({{ e.frecuencia }} veces){% if not loop.last %}; {% endif %}{% endfor %}
+- Racha actual: {{ racha_aciertos }}
+
+INTENTOS RECIENTES EN ESTE CONCEPTO:
+{% for intento in intentos_recientes %}
+- {{ intento.fecha }}: Puntuación {{ intento.puntuacion }}, Errores: {{ intento.errores | join(", ") }}
+{% endfor %}
+
+INSTRUCCIONES:
+1. Genera un apunte personalizado tipo "chuleta de estudio"
+2. Incluye: definición, regla mnemotécnica, ejemplo paso a paso, error típico + corrección, 3 ejercicios de práctica con dificultad progresiva
+3. Enfoque en los errores recurrentes de ESTA alumna
+4. Formato LaTeX para fórmulas, texto claro para explicaciones
+5. Extensión: ~500 palabras
+
+FORMATO SALIDA (JSON estricto):
+{
+  "titulo": "...",
+  "contenido_latex": "...",
+  "ejercicios_practica": [
+    {"enunciado_latex": "...", "solucion_latex": "...", "dificultad": 1},
+    {"enunciado_latex": "...", "solucion_latex": "...", "dificultad": 2},
+    {"enunciado_latex": "...", "solucion_latex": "...", "dificultad": 3}
+  ]
+}

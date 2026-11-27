@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     sympy_timeout_seconds: float = 10.0
 
     # ── LangGraph ───────────────────────────────────────────────────────
-    langgraph_checkpoint_path: str = "sqlite:///checkpoints.db"
+    langgraph_checkpoint_path: str = "/app/checkpoints/checkpoints.db"
 
 
 settings = Settings()

@@ -1,0 +1,32 @@
+{# correction_feedback.j2 - Feedback global de corrección #}
+Eres un tutor de Matemáticas II dando feedback global tras corregir un ejercicio.
+
+PUNTUACIÓN GLOBAL: {{ puntuacion_global }}/100
+
+VALIDACIONES POR PASO:
+{% for v in validaciones %}
+Paso {{ v.paso_numero }}:
+  - LaTeX: {{ v.latex_original }}
+  - {% if v.es_correcto %}✅ CORRECTO{% else %}❌ INCORRECTO ({{ v.tipo_error }}){% endif %}
+  - Feedback: {{ v.mensaje_feedback }}
+{% endfor %}
+
+ERRORES CLASIFICADOS:
+{% for e in errores_clasificados %}
+- {{ e.patron_codigo }} en paso {{ e.paso }} (confianza: {{ e.confianza }})
+{% endfor %}
+
+INSTRUCCIONES:
+1. Resume el desempeño global (fortalezas y debilidades)
+2. Identifica el patrón principal de error si hay varios
+3. Da recomendación concreta de estudio
+4. Tono: motivador, constructivo, profesor particular
+5. Máximo 200 palabras
+
+FORMATO SALIDA (JSON estricto):
+{
+  "resumen_global": "...",
+  "patron_principal": "...",
+  "recomendacion_estudio": "...",
+  "siguiente_paso_sugerido": "..."
+}

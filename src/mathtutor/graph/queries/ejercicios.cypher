@@ -2,7 +2,7 @@
 -- EJERCICIOS: Queries CRUD y relación con conceptos
 -- ============================================================================
 
--- ── Create ─────────────────────────────────────────────────────────────
+-- name: create
 CREATE (e:Ejercicio {
     id: $id,
     enunciado_latex: $enunciado_latex,
@@ -19,11 +19,11 @@ CREATE (e:Ejercicio {
 })
 RETURN e
 
--- ── Read by ID ─────────────────────────────────────────────────────────
+-- name: read_by_id
 MATCH (e:Ejercicio {id: $id})
 RETURN e
 
--- ── Read with Conceptos (con pesos y principal) ───────────────────────
+-- name: read_with_conceptos
 MATCH (e:Ejercicio {id: $id})
 OPTIONAL MATCH (e)-[t:TESTS]->(c:Concepto)
 RETURN e,
@@ -33,42 +33,50 @@ RETURN e,
            es_principal: t.es_principal
        }) AS tests
 
--- ── Read by Tipo y Dificultad ─────────────────────────────────────────
+-- name: read_by_tipo_dificultad
 MATCH (e:Ejercicio {tipo: $tipo})
 WHERE $dificultad IS NULL OR e.dificultad = $dificultad
 RETURN e
 ORDER BY e.dificultad, e.created_at
 LIMIT $limit
 
--- ── Update ─────────────────────────────────────────────────────────────
+-- name: update
 MATCH (e:Ejercicio {id: $id})
 SET e += $props,
     e.updated_at = datetime()
 RETURN e
 
--- ── Delete ─────────────────────────────────────────────────────────────
+-- name: delete
 MATCH (e:Ejercicio {id: $id})
 DETACH DELETE e
 
--- ── Link Concepto (TESTS) ─────────────────────────────────────────────
+-- name: link_concepto
 MATCH (e:Ejercicio {id: $ejercicio_id}), (c:Concepto {codigo: $concepto_codigo})
 MERGE (e)-[t:TESTS]->(c)
 SET t.peso = $peso, t.es_principal = $es_principal
 RETURN t
 
--- ── Unlink Concepto ───────────────────────────────────────────────────
+-- name: unlink_concepto
 MATCH (e:Ejercicio {id: $ejercicio_id})-[t:TESTS]->(c:Concepto {codigo: $concepto_codigo})
 DELETE t
 
--- ── Verify Test Weights Sum = 1.0 ─────────────────────────────────────
+-- name: verify_test_weights
 MATCH (e:Ejercicio {id: $ejercicio_id})-[t:TESTS]->()
 WITH sum(t.peso) AS total
 RETURN total, abs(total - 1.0) <= 0.001 AS is_valid
 
--- ── Get Exercise with Prerequisites for Validation ────────────────────
+-- name: get_with_prereqs_for_validation
 MATCH (e:Ejercicio {id: $ejercicio_id})
 OPTIONAL MATCH (e)-[:TESTS]->(c:Concepto)
 OPTIONAL MATCH (c)<-[:PREREQUISITE_OF*]-(pre:Concepto)
 RETURN e,
        collect(DISTINCT {concepto: c, peso: 0.0, es_principal: false}) AS conceptos,
+       collect(DISTINCT pre.codigo) AS prerequisitos_codigos
+
+-- name: get_context_for_correction
+MATCH (e:Ejercicio {id: $ejercicio_id})
+OPTIONAL MATCH (e)-[t:TESTS]->(c:Concepto)
+OPTIONAL MATCH (c)<-[:PREREQUISITE_OF*]-(pre:Concepto)
+RETURN e,
+       collect(DISTINCT {concepto: c, peso: t.peso, es_principal: t.es_principal}) AS conceptos,
        collect(DISTINCT pre.codigo) AS prerequisitos_codigos

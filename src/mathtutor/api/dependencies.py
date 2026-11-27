@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import AsyncGenerator
 from fastapi import Depends
+from returns.result import Failure
 
 from mathtutor.graph.session import get_neo4j_session, get_neo4j_transaction, AsyncSession, AsyncTransaction
 from mathtutor.llm.factory import LLMFactory
@@ -34,8 +35,8 @@ async def get_db_transaction() -> AsyncGenerator[AsyncTransaction, None]:
 async def get_llm() -> LLMProtocol:
     """Dependency para proveedor LLM configurado."""
     result = LLMFactory.create()
-    if result.is_failure():
-        raise RuntimeError(f"LLM initialization failed: {result.error()}")
+    if isinstance(result, Failure):
+        raise RuntimeError(f"LLM initialization failed: {result.failure()}")
     return result.unwrap()
 
 

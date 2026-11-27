@@ -95,7 +95,7 @@ async def main():
         for c in conceptos:
             query = """
             MERGE (c:Concepto {codigo: $codigo})
-            SET c += $props, c.id = coalesce(c.id, apoc.create.uuid()), c.updated_at = datetime()
+            SET c += $props, c.id = coalesce(c.id, randomUUID()), c.updated_at = datetime()
             """
             await manager.execute_write(query, {"codigo": c["codigo"], "props": c})
             print(f"  ✓ {c['codigo']} - {c['nombre']}")

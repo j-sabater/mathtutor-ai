@@ -2,7 +2,7 @@
 -- PATRONES DE ERROR: Queries CRUD y vinculación
 -- ============================================================================
 
--- ── Create ─────────────────────────────────────────────────────────────
+-- name: create
 CREATE (p:PatronDeError {
     id: $id,
     codigo: $codigo,
@@ -18,27 +18,27 @@ CREATE (p:PatronDeError {
 })
 RETURN p
 
--- ── Read by Código ─────────────────────────────────────────────────────
+-- name: read_by_codigo
 MATCH (p:PatronDeError {codigo: $codigo})
 RETURN p
 
--- ── Read by Concepto ───────────────────────────────────────────────────
+-- name: read_by_concepto
 MATCH (p:PatronDeError {concepto_codigo: $concepto_codigo})
 RETURN p
 ORDER BY p.severidad DESC, p.frecuencia_global DESC
 
--- ── Read All ───────────────────────────────────────────────────────────
+-- name: read_all
 MATCH (p:PatronDeError)
 RETURN p
 ORDER BY p.frecuencia_global DESC, p.severidad DESC
 
--- ── Update Frequency ──────────────────────────────────────────────────
+-- name: update_frequency
 MATCH (p:PatronDeError {codigo: $codigo})
 SET p.frecuencia_global = p.frecuencia_global + 1,
     p.updated_at = datetime()
 RETURN p.frecuencia_global AS nueva_frecuencia
 
--- ── Link Intento -> PatronDeError (HAS_ERROR) ─────────────────────────
+-- name: link_intento_error
 MATCH (i:Intento {id: $intento_id}), (p:PatronDeError {codigo: $patron_codigo})
 MERGE (i)-[he:HAS_ERROR]->(p)
 SET he.paso = $paso,
@@ -47,7 +47,7 @@ SET he.paso = $paso,
     he.detectado_en = datetime()
 RETURN he
 
--- ── Get Errores de un Intento ─────────────────────────────────────────
+-- name: get_errores_intento
 MATCH (i:Intento {id: $intento_id})-[he:HAS_ERROR]->(p:PatronDeError)
 RETURN p.codigo AS patron_codigo,
        p.nombre AS patron_nombre,
@@ -56,7 +56,7 @@ RETURN p.codigo AS patron_codigo,
        he.confianza AS confianza,
        he.validado_por AS validado_por
 
--- ── Top Patrones Recurrentes (últimos N días) ─────────────────────────
+-- name: top_recurrent_patterns
 MATCH (u:User {id: $alumna_id})<-[:MADE_BY]-(i:Intento)-[he:HAS_ERROR]->(p:PatronDeError)
 WHERE i.created_at >= datetime() - duration({days: $days})
 RETURN p.codigo, p.nombre, p.severidad, count(*) AS frecuencia,

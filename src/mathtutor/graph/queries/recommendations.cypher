@@ -2,7 +2,7 @@
 -- RECOMMENDATIONS: Generación y consulta de ejercicios recomendados
 -- ============================================================================
 
--- ── Link Recommendation (Concepto -> Ejercicio) ───────────────────────
+-- name: link_recommendation
 MATCH (c:Concepto {codigo: $concepto_codigo}), (e:Ejercicio {id: $ejercicio_id})
 MERGE (c)-[r:RECOMMENDS]->(e)
 SET r.razon = $razon,
@@ -10,7 +10,7 @@ SET r.razon = $razon,
     r.created_at = datetime()
 RETURN r
 
--- ── Get Recommendations for Alumna ────────────────────────────────────
+-- name: get_recommendations_for_alumna
 MATCH (u:User {id: $alumna_id})
 OPTIONAL MATCH (c:Concepto)<-[:PREREQUISITE_OF*]-(weak:Concepto)
 WHERE weak.codigo IN $weak_conceptos
@@ -20,13 +20,13 @@ RETURN e, r.razon AS razon, r.prioridad AS prioridad, c.codigo AS concepto_orige
 ORDER BY r.prioridad ASC, e.dificultad ASC
 LIMIT $limit
 
--- ── Get Recommendations for Concepto ──────────────────────────────────
+-- name: get_recommendations_for_concepto
 MATCH (c:Concepto {codigo: $concepto_codigo})-[r:RECOMMENDS]->(e:Ejercicio)
 RETURN e, r.razon AS razon, r.prioridad AS prioridad
 ORDER BY r.prioridad ASC
 LIMIT $limit
 
--- ── Get Student Profile for Adaptive Generation ───────────────────────
+-- name: get_student_profile
 MATCH (u:User {id: $alumna_id})
 OPTIONAL MATCH (u)-[m:MASTERY_LEVEL]->(c:Concepto)
 OPTIONAL MATCH (u)<-[:MADE_BY]-(i:Intento)-[:HAS_ERROR]->(p:PatronDeError)
@@ -45,6 +45,6 @@ RETURN {
     prerequisitos_faltantes: {}
 } AS profile
 
--- ── Delete Recommendation ─────────────────────────────────────────────
+-- name: delete_recommendation
 MATCH (c:Concepto {codigo: $concepto_codigo})-[r:RECOMMENDS]->(e:Ejercicio {id: $ejercicio_id})
 DELETE r

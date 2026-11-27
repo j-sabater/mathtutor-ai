@@ -119,10 +119,11 @@ def validate_mastery_bounds(nivel: float) -> Result[None, BoundError]:
 
 def validate_latex_parseable(latex: str) -> Result[sp.Expr, ParseError]:
     """
-    RV-04: sympy.parse_latex(latex) no lanza excepción.
+    RV-04: latex2sympy2.latex2sympy(latex) no lanza excepción.
     """
     try:
-        expr = sp.parse_latex(latex)
+        import latex2sympy2 as l2s
+        expr = l2s.latex2sympy(latex)
         return Success(expr)
     except Exception as e:
         return Failure(ParseError(context={"latex": latex, "error": str(e)}))

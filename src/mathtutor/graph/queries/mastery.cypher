@@ -2,14 +2,14 @@
 -- MASTERY LEVEL: Queries EWMA y perfil de alumna
 -- ============================================================================
 
--- ── Get Mastery for Concepto ───────────────────────────────────────────
+-- name: get_mastery
 MATCH (u:User {id: $alumna_id})-[m:MASTERY_LEVEL]->(c:Concepto {codigo: $concepto_codigo})
 RETURN m.nivel AS nivel,
        m.ultima_actualizacion AS ultima_actualizacion,
        m.intentos_totales AS intentos_totales,
        m.aciertos_consecutivos AS aciertos_consecutivos
 
--- ── Get All Mastery for Alumna ─────────────────────────────────────────
+-- name: get_all_mastery
 MATCH (u:User {id: $alumna_id})-[m:MASTERY_LEVEL]->(c:Concepto)
 RETURN c.codigo AS concepto_codigo,
        c.nombre AS concepto_nombre,
@@ -20,8 +20,7 @@ RETURN c.codigo AS concepto_codigo,
        m.ultima_actualizacion AS ultima_actualizacion
 ORDER BY m.nivel ASC
 
--- ── Update Mastery EWMA (Upsert) ───────────────────────────────────────
--- alpha = 0.3 por defecto
+-- name: update_mastery_ewma
 MATCH (u:User {id: $alumna_id}), (c:Concepto {codigo: $concepto_codigo})
 MERGE (u)-[m:MASTERY_LEVEL]->(c)
 ON CREATE SET m.nivel = $nuevo_nivel,
@@ -34,7 +33,7 @@ ON MATCH SET m.nivel = ( (1 - $alpha) * m.nivel + $alpha * $nuevo_nivel ),
               m.ultima_actualizacion = datetime()
 RETURN m.nivel AS nuevo_nivel
 
--- ── Update Mastery Fields Directamente ────────────────────────────────
+-- name: update_mastery_fields
 MATCH (u:User {id: $alumna_id})-[m:MASTERY_LEVEL]->(c:Concepto {codigo: $concepto_codigo})
 SET m.nivel = $nivel,
     m.intentos_totales = $intentos_totales,
@@ -42,7 +41,7 @@ SET m.nivel = $nivel,
     m.ultima_actualizacion = datetime()
 RETURN m
 
--- ── Conceptos Débiles (mastery < threshold) con Prerequisitos ─────────
+-- name: get_weak_concepts_with_prereqs
 MATCH (u:User {id: $alumna_id})-[m:MASTERY_LEVEL]->(c:Concepto)
 WHERE m.nivel < $threshold
 OPTIONAL MATCH (c)<-[:PREREQUISITE_OF]-(pre:Concepto)
@@ -59,7 +58,7 @@ RETURN c.codigo AS concepto_debil,
 ORDER BY m.nivel ASC
 LIMIT $limit
 
--- ── Reset Mastery (para testing/admin) ────────────────────────────────
+-- name: reset_mastery
 MATCH (u:User {id: $alumna_id})-[m:MASTERY_LEVEL]->(c:Concepto)
 WHERE $concepto_codigo IS NULL OR c.codigo = $concepto_codigo
 DELETE m

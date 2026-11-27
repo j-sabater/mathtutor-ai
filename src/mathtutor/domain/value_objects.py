@@ -30,7 +30,8 @@ class LatexString(str):
     def _validate(cls, value: str, _info: Any) -> str:
         """Valida que el LaTeX sea parseable por SymPy."""
         try:
-            sp.parse_latex(value)
+            import latex2sympy2 as l2s
+            l2s.latex2sympy(value)
         except Exception as e:
             raise ValueError(f"LaTeX no parseable por SymPy: {e}")
         return value

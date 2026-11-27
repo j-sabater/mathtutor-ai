@@ -28,10 +28,13 @@ help:
 	@echo "  make eval        - Suite completa de evals"
 	@echo "  make eval-quick  - Smoke test rápido de evals"
 	@echo ""
+	@echo "Base de Datos / Migraciones:"
+	@echo "  make migrate     - Aplica migraciones Cypher versionadas"
+	@echo "  make seed        - Puebla BD con currículo base (post-migración)"
+	@echo ""
 	@echo "Desarrollo:"
 	@echo "  make dev         - Uvicorn con reload (puerto 8000)"
 	@echo "  make cli         - CLI administrativa (Typer)"
-	@echo "  make seed        - Puebla BD con currículo base"
 	@echo ""
 	@echo "CI Local (simula GitHub Actions):"
 	@echo "  make ci          - check + test + eval-quick + build-docker"
@@ -87,6 +90,14 @@ eval:
 eval-quick:
 	python -m evals.runners.quick_smoke
 
+# ── Base de Datos / Migraciones ────────────────────────────────────────
+
+migrate:
+	python scripts/migrate.py
+
+seed: migrate
+	python scripts/seed_graph.py
+
 # ── Desarrollo ─────────────────────────────────────────────────────────
 
 dev:
@@ -94,9 +105,6 @@ dev:
 
 cli:
 	python -m mathtutor.cli --help
-
-seed:
-	python scripts/seed_graph.py
 
 # ── CI Local ───────────────────────────────────────────────────────────
 

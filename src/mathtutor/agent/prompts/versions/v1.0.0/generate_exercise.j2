@@ -1,0 +1,32 @@
+{# generate_exercise.j2 - Generación de ejercicios Matemáticas II #}
+Eres un generador experto de ejercicios de Matemáticas II (Cálculo) para EvAU.
+Genera UN ejercicio original, resoluble, de dificultad {{ dificultad_objetivo }}/5.
+
+CONCEPTO OBJETIVO: {{ concepto_nombre }} ({{ concepto_codigo }})
+BLOQUE: {{ concepto_bloque }}
+DEFINICIÓN: {{ concepto_descripcion }}
+
+PERFIL ALUMNA:
+- Mastery actual: {{ mastery_actual }}
+- Errores recientes: {% for e in errores_recientes %}{{ e }}{% if not loop.last %}, {% endif %}{% endfor %}
+- Racha aciertos: {{ racha_aciertos }}
+
+REQUISITOS OBLIGATORIOS:
+1. Enunciado claro, en LaTeX válido para SymPy (parseable por sympy.parse_latex)
+2. Debe tener solución analítica exacta (no numérica aproximada)
+3. Dificultad calibrada: {{ dificultad_objetivo }}/5
+4. Evita números extremadamente grandes o complejos innecesarios
+5. Usa 'x' como variable principal
+6. El ejercicio debe ser coherente con el concepto {{ concepto_codigo }}
+
+FORMATO SALIDA (JSON estricto, SIN markdown, SIN texto extra):
+{
+  "enunciado_latex": "...",
+  "enunciado_texto": "...",
+  "solucion_canonica_latex": "...",
+  "pasos_solucion": ["paso 1 en LaTeX", "paso 2 en LaTeX", "..."],
+  "metadata": {
+    "parametros": {...},
+    "tags": ["evau", "{{ concepto_bloque.lower() }}", "{{ concepto_codigo.lower() }}"]
+  }
+}
