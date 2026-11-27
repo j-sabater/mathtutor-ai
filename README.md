@@ -4,7 +4,7 @@
 
 ---
 
-## 🎯 Por qué este proyecto
+## Por qué este proyecto
 
 Este proyecto nace de dos motores:
 
@@ -23,7 +23,7 @@ Este proyecto nace de dos motores:
 
 ---
 
-## 🏗️ Arquitectura (Single Source of Truth: `specs/`)
+## Arquitectura (Single Source of Truth: `specs/`)
 
 | Spec | Qué Gobierna |
 |------|--------------|
@@ -36,7 +36,7 @@ Este proyecto nace de dos motores:
 
 ---
 
-## 🛠️ Stack Técnico
+## Stack Técnico
 
 - **Python 3.11+**, FastAPI, Neo4j 5.x (Docker), SymPy, Pydantic v2
 - **LLM Agnóstico**: Anthropic / OpenAI / Ollama (via `LLMProtocol` + `LLMFactory`)
@@ -47,7 +47,7 @@ Este proyecto nace de dos motores:
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 # 1. Instalar dependencias
@@ -73,7 +73,7 @@ make dev
 
 ---
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 mathtutor-ai/
@@ -105,7 +105,7 @@ mathtutor-ai/
 
 ---
 
-## 🔄 Flujo de Trabajo SDD (Mi día a día)
+## Flujo de Trabajo SDD (Mi día a día)
 
 ```bash
 # Inicio de sesión
@@ -131,7 +131,7 @@ make check       # Lint + typecheck + tests unitarios
 
 ---
 
-## 🎓 Lo que estoy aprendiendo (y practicando)
+## Lo que estoy aprendiendo (y practicando)
 
 | Habilidad | Aplicación en este proyecto |
 |-----------|----------------------------|
@@ -147,7 +147,7 @@ make check       # Lint + typecheck + tests unitarios
 
 ---
 
-## 📊 Métricas de Calidad Objetivo
+## Métricas de Calidad Objetivo
 
 | Métrica | Target | Medición |
 |---------|--------|----------|
@@ -160,7 +160,7 @@ make check       # Lint + typecheck + tests unitarios
 
 ---
 
-## 🤝 Contribuir
+## Contribuir
 
 Este es un proyecto de aprendizaje personal, pero si quieres explorar:
 
@@ -171,7 +171,7 @@ Este es un proyecto de aprendizaje personal, pero si quieres explorar:
 
 ---
 
-## 📝 Licencia
+## Licencia
 
 Proyecto educativo personal. Código abierto para aprendizaje y referencia.
 
