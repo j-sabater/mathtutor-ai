@@ -390,13 +390,25 @@ class MasterySnapshot(BaseModel):
 
 ## 10. Checklist de Consistencia (Pre-Commit para esta Spec)
 
-- [ ] Todos los `codigo` de `Concepto` y `PatronDeError` siguen patrón `BLOQUE-NN` (ej. `DER-03`).
-- [ ] `:PREREQUISITE_OF` no forma ciclos (validado por `RV-01` en tests).
-- [ ] Pesos `:TESTS` suman 1.0 por ejercicio (validado por `RV-02`).
-- [ ] `MasteryLevel.nivel` siempre en `[0.0, 1.0]` (validado por `RV-03`).
-- [ ] `LatexString` valida parseo SymPy (validado por `RV-04`).
-- [ ] Queries canónicas usan parámetros (`$param`), nunca interpolación de strings.
-- [ ] Índices cubren todos los patrones de acceso en UC-01..UC-06.
+- [x] Todos los `codigo` de `Concepto` y `PatronDeError` siguen patrón `BLOQUE-NN` (ej. `DER-03`).
+- [x] `:PREREQUISITE_OF` no forma ciclos (validado por `RV-01` en tests).
+- [x] Pesos `:TESTS` suman 1.0 por ejercicio (validado por `RV-02`).
+- [x] `MasteryLevel.nivel` siempre en `[0.0, 1.0]` (validado por `RV-03`).
+- [x] `LatexString` valida parseo SymPy/latex2sympy2 (validado por `RV-04`).
+- [x] Queries canónicas usan parámetros (`$param`), nunca interpolación de strings.
+- [x] Índices cubren todos los patrones de acceso en UC-01..UC-06.
+- [x] Entidades de dominio implementadas (6): Concepto, Ejercicio, Intento, PatronDeError, User, SesionEstudio
+- [x] Value Objects implementados (8): PasoMatematico, PatronErrorRef, MasterySnapshot, LatexString, OCRResult, StepValidation, ErrorClassification, GraphUpdateResult
+- [x] Domain Events implementados (6): IntentoCreado, IntentoCorregido, MasteryActualizado, PatronErrorDetectado, EjercicioRecomendado, ApunteGenerado
+- [x] Reglas de validación implementadas (RV-01 a RV-06)
+- [x] Neo4j adapter: GraphRepository protocol + mappers + session manager + 7 query files
+- [x] SymPyToolProtocol (8 operaciones) + Latex2SymPyTool implementation
+- [x] ErrorClassifierEngine + DefaultErrorClassifierEngine (7 reglas puras)
+- [x] LLMProtocol + 3 adapters (Anthropic, OpenAI, Ollama) + Factory
+- [x] OCR Pipeline: Strategy pattern (local Pix2Text + fallback Mathpix)
+- [x] FastAPI REST API (7 endpoints) + CLI (5 comandos)
+- [x] Docker compose (Neo4j + Redis + API) + Makefile + seed script
+- [x] Tests unitarios: entidades, reglas, VOs, error classifier
 
 ---
 

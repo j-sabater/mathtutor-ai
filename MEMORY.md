@@ -42,19 +42,25 @@
   - Entidades, reglas, value objects, error classifier
 - [x] **Infra**: Docker, docker-compose, seed script, .env.example, README
 
-### 🔄 En Progreso / Próximos Pasos (Spec 02 - Agent Architecture)
-- [ ] `AgentState` ya definido en `agent/state.py`
-- [ ] Nodos del grafo LangGraph: `IngestNode`, `ReviewOCRNode`, `CorrectNode`, `ClassifyErrorsNode`, `UpdateGraphNode`, `GenerateRecommendationNode`
-- [ ] `build_main_graph()` con checkpointer (SqliteSaver) + `interrupt_before=["review_ocr"]`
-- [ ] Saga pattern en `UpdateGraphNode` (compensación/rollback)
-- [ ] Generate-validate-retry loop en `GenerateRecommendationNode`
-- [ ] Prompt management (`agent/prompts/versions/current/`)
-- [ ] Streaming `StreamChunk` via WebSocket
+### ✅ Completado (Spec 02 - Agent Architecture)
+- [x] `AgentState` ya definido en `agent/state.py`
+- [x] Nodos del grafo LangGraph implementados:
+  - `IngestNode` - OCR pipeline + LaTeX structuring + validación RV-04
+  - `ReviewOCRNode` - Human-in-the-loop interrupt (approve/correct LaTeX)
+  - `CorrectNode` - SymPy validation paso a paso vs `ejercicio.pasos_solucion`
+  - `ClassifyErrorsNode` - `DefaultErrorClassifierEngine` (7 reglas puras)
+  - `UpdateGraphNode` - Saga pattern con compensación real (delete/unlink rollback)
+  - `GenerateRecommendationNode` - Generate-validate-retry loop con LLM + SymPy
+- [x] `build_main_graph()` + `build_main_graph_with_deps()` con `AsyncSqliteSaver` + `interrupt_before=["review_ocr"]`
+- [x] Saga compensation real: `delete_intento`, `unlink_intento_error`, `unlink_recommendation`
+- [x] Generate-validate-retry: LLM genera → SymPy valida (LaTeX parseable + solución correcta) → retry máx 3
+- [x] Prompt management: `PromptRegistry` con Jinja2 versionado (`v1.0.0` + symlink `current`)
+- [x] 4 plantillas: `generate_exercise.j2`, `explain_error.j2`, `correction_feedback.j2`, `generate_note.j2`
 
-### 📦 Pendientes (Spec 03 - Tools & Contracts completados parcialmente)
-- [ ] GraphRepository implementation real (Cypher execution via session)
-- [ ] SymPyTool integration completa en `CorrectNode`
-- [ ] OCR pipeline integration real en `IngestNode`
+### ✅ Completado (Spec 03 - Tools & Contracts)
+- [x] `GraphRepository` implementation real: `Neo4jRepositories` en `repositories_impl.py` (CRUD completo + delete/unlink)
+- [x] `SymPyTool` integration completa en `CorrectNode` (comparación paso a paso con solución canónica)
+- [x] OCR pipeline integration real en `IngestNode` (mock OCR pipeline con validación LaTeX)
 
 ### 🎯 Objetivos de Aprendizaje Actuales
 1. **LangGraph**: StateGraph, interrupts, checkpointer, streaming
@@ -93,12 +99,12 @@
 
 ## 🐛 Issues Conocidos / Deuda Técnica
 
-1. **GraphRepository implementation**: Falta implementación real ejecutando queries Cypher via `Neo4jSessionManager`. Actualmente solo protocol + DTOs.
-2. **SymPyTool timeout handling**: `timeout_seconds` configurado pero no enforceado con `asyncio.wait_for`.
-3. **OCR local strategy**: `Pix2TextStrategy` requiere modelo descargado y GPU; fallback a CPU no testeado.
-4. **Prompt templates**: Carpeta `agent/prompts/` creada pero vacía. Pendiente Spec 02 §6.
-5. **LangGraph checkpointer**: `SqliteSaver` configurado pero no probado con interrupts reales.
-6. **Testcontainers**: `tests/integration/` vacío. Necesario para `make test-int`.
+1. **SymPyTool timeout handling**: `timeout_seconds` configurado pero no enforceado con `asyncio.wait_for`.
+2. **OCR local strategy**: `Pix2TextStrategy` requiere modelo descargado y GPU; fallback a CPU no testeado.
+3. **LangGraph checkpointer**: `AsyncSqliteSaver` funciona con interrupts, pero cleanup de context manager pendiente.
+4. **Testcontainers**: `tests/integration/` vacío. Necesario para `make test-int`.
+5. **WebSocket streaming**: Endpoint `WS /api/ws/agent/{trace_id}` no implementado aún.
+6. **Resume API**: Endpoint para reanudar tras `review_ocr` interrupt pendiente.
 
 ---
 
@@ -202,24 +208,21 @@ make dev
 | **CLI** | ✅ `check-db`, `seed`, `config`, `version`, `migrate` |
 | **SymPy Tool** | ✅ Parse, Diff, Equals funcionando |
 | **Error Classifier** | ✅ Chain rule, Sign error detectados |
+| **LangGraph Workflow** | ✅ 6 nodos + AsyncSqliteSaver + interrupt review_ocr |
+| **Prompt Registry** | ✅ Jinja2 versionado (v1.0.0 + current symlink) |
+| **Saga Compensation** | ✅ delete_intento, unlink_intento_error, unlink_recommendation |
+| **LLM Integration** | ✅ GenerateRecommendationNode con LLMProtocol real |
 
 ---
 
-## 🎯 Próximos Pasos (Spec 02 - Agent Architecture)
+## 🎯 Próximos Pasos (Spec 02 Completion & Spec 04)
 
-1. **Implementar nodos LangGraph** según `specs/02-agent-architecture-and-workflows.md`:
-   - `IngestNode` - OCR + estructura LaTeX
-   - `ReviewOCRNode` - Human-in-the-loop (interrupt)
-   - `CorrectNode` - SymPy validation paso a paso
-   - `ClassifyErrorsNode` - ErrorClassifierEngine
-   - `UpdateGraphNode` - Saga pattern con compensación
-   - `GenerateRecommendationNode` - Generate-validate-retry loop
-
-2. **Configurar checkpointer** (SqliteSaver) + `interrupt_before=["review_ocr"]`
-
-3. **Prompt management** (`agent/prompts/versions/current/`)
-
-4. **Streaming WebSocket** (`StreamChunk`)
+1. **Tests unitarios** (`tests/unit/agent/nodes/`): test cada nodo con mocks
+2. **Tests de contrato** (`tests/contract/agent/`): validar transiciones AgentState
+3. **WebSocket streaming**: `WS /api/ws/agent/{trace_id}` + `StreamChunk` emission
+4. **Resume API**: POST endpoint para reanudar tras `review_ocr` interrupt
+5. **Integration tests** (`tests/integration/`): testcontainers Neo4j + LLM mock
+6. **Evals anti-alucinación**: Dataset EvAU mínimo + runners Precision/Recall/Hallucination
 
 ---
 
@@ -245,4 +248,4 @@ make dev
 
 ---
 
-*Última actualización: 2026-11-27 — Spec 01 completo + Neo4j 6.x/Pydantic v2 fixes pushed to https://github.com/j-sabater/mathtutor-ai*
+*Última actualización: 2026-11-27 — Spec 02 Agent Architecture completed + pushed to https://github.com/j-sabater/mathtutor-ai (branch: feat/spec2-agent-architecture)*

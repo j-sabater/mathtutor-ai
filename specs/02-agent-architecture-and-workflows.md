@@ -846,13 +846,15 @@ async def test_update_graph_node_persists_mastery_and_errors(neo4j_container):
 
 ## 10. Checklist de Consistencia (Pre-Commit para esta Spec)
 
-- [ ] Todos los nodos heredan de `BaseNode` con `__call__(state) -> State` y emiten `StreamChunk`.
-- [ ] `ReviewOCRNode` es **único** `interrupt_before` en el grafo principal.
-- [ ] `CorrectNode` **nunca** usa LLM para validar matemáticas (solo SymPyTool).
-- [ ] `ClassifyErrorsNode` usa `ErrorClassifierEngine` (reglas puras, 0 LLM).
-- [ ] `UpdateGraphNode` implementa patrón Saga con `executed_steps` para rollback.
-- [ ] `GenerateRecommendationNode` tiene bucle `generate → validate(sympy) → retry` con max 3.
-- [ ] Prompts en `agent/prompts/versions/current/`, renderizados via `PromptRegistry`.
+- [x] Todos los nodos heredan de `BaseNode` con `__call__(state) -> State | Command` y emiten `StreamChunk`.
+- [x] `ReviewOCRNode` es **único** `interrupt_before` en el grafo principal (`interrupt_before=["review_ocr"]`).
+- [x] `CorrectNode` **nunca** usa LLM para validar matemáticas (solo SymPyTool/latex2sympy2).
+- [x] `ClassifyErrorsNode` usa `ErrorClassifierEngine` (reglas puras, 0 LLM) - 7 reglas implementadas.
+- [x] `UpdateGraphNode` implementa patrón Saga con `executed_steps` para rollback real (delete/unlink).
+- [x] `GenerateRecommendationNode` tiene bucle `generate → validate(sympy) → retry` con max 3 (configurable).
+- [x] Prompts en `agent/prompts/versions/current/`, renderizados via `PromptRegistry` (Jinja2 versionado).
+- [x] 4 plantillas implementadas: `generate_exercise.j2`, `explain_error.j2`, `correction_feedback.j2`, `generate_note.j2`
+- [x] `build_main_graph()` + `build_main_graph_with_deps()` con `AsyncSqliteSaver` (async checkpointer).
 - [ ] WebSocket emite `StreamChunk` tipado; HTMX consume con `hx-ext="ws"`.
 - [ ] Métricas Prometheus expuestas en `/metrics` por nodo.
 - [ ] Tests: unit (mocks), contract (state transitions), integration (Neo4j real).
